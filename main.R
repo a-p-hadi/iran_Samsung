@@ -45,6 +45,11 @@ y<-table(df$Cost_Type)
 barplot(y[order(y)],col = c("red","violetred3","antiquewhite2"),main = "Freq of Cost Type")
 
 # 8
+
+
+
+
+
 install.packages("data.table", dependencies = TRUE)
 library(data.table)
 
@@ -52,7 +57,9 @@ dt <- as.data.table(df)
 summary(dt)
 categorical_cols <- names(dt)[sapply(dt, function(x) is.factor(x) | is.character(x))]
 categorical_cols
+
 for (col in categorical_cols) {
+  # Calculate mean target encoding
   encoding_map <- dt[, .(mean_target = mean(dt$Total_Invoice_Amount)), by = col]  # Replace target_column with your actual target column name
   setkeyv(encoding_map, col)  # Set key for fast join
   dt[encoding_map, paste0(col, "_encoded") := i.mean_target, on = col]
@@ -60,6 +67,54 @@ for (col in categorical_cols) {
 summary(dt)
 # Remove the original categorical columns from the encoded dataframe
 dt[, (categorical_cols) := NULL]
+
+
+
+
+
+
+
+
+
+install.packages("categoryEncoders")
+library(categoryEncoders)
+
+# Build a data set
+data_set <- data.frame(student = c("Marie", "Marie", "Pierre", "Louis", "Louis"),
+                       grades = c(1, 1, 2, 3, 4))
+
+# Perform target encoding
+encoder <- TargetEncoder(c("student"), "grades")
+encoded_data <- transform(encoder, data_set)
+
+# View the encoded data set
+print(encoded_data)
+
+
+
+
+
+
+
+data_set <- data.table(student = c("Marie", "Marie", "Pierre", "Louis", "Louis"),
+                       grades = c(1, 1, 2, 3, 4))
+
+target_encoding <- build_target_encoding(data_set, cols_to_encode = "student",
+                                         target_col = "grades", functions = c("mean", "sum"))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 summary(dt)
