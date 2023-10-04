@@ -146,9 +146,52 @@ summary(model_final)$r.squared # r2
 
 
 # 10
-install.packages("arules")
+install.packages("arules", dependencies = TRUE)
 library("arules")
+arules_model <- apriori(df, parameter = list(supp = 0.01, conf = 0.3))
+arules_model
+
+summary(df)
+df_arules <- subset(df, select = -c(No, Serial_No, Receipt_Date , Appoint_Date , Complete_Date , Receipt_Day, Appoint_Day, Complete_Day, day,TAT01, TAT02,
+                                   Parts_Amount , Discount_Amount , Total_Invoice_Amount , Labor_Charge_Amount))
+summary(df_arules)
+
+data8 <-  as(data7, "transactions")
+
+inspect(head(data8))
 
 
 
+
+
+df_arules$Cost_Type <- as.factor(df_arules$Cost_Type)
+df_arules$Defect_Des <- as.factor(df_arules$Defect_Des)
+df_arules$Service_type <- as.factor(df_arules$Service_type)
+df_arules$City <- as.factor(df_arules$City)
+df_arules$Job_Satus <- as.factor(df_arules$Job_Satus)
+df_arules$Symptom_Desc <- as.factor(df_arules$Symptom_Desc)
+df_arules$Action <- as.factor(df_arules$Action)
+df_arules$Labor_Charge_Desc <- as.factor(df_arules$Labor_Charge_Desc)
+df_arules$Engineer <- as.factor(df_arules$Engineer)
+df_arules$Product_Group <- as.factor(df_arules$Product_Group)
+arules_model <- apriori(df_arules, parameter = list(supp = 0.1, conf = 0.5))
+arules_model
+inspect(arules_model[1:40])
+itemFrequencyPlot(data8, topN = 15,
+                  main = "Items Distribution", 
+                  type = "absolute", ylab = "Frequency")
+
+install.packages("arulesViz")
+library("arulesViz")
+inspectDT(arules_model)
+inspect(subset(arules_model, lift > 3))
+inspect(subset(arules_model, support > 0.05))
+
+
+
+
+# زمان تعمیر با مهندس
+# تاریخ اتمام با مهندس
+# اقدام صورت گرفته با مهندس
+# مدت زمان تعمیر با نوع خرابی
 
