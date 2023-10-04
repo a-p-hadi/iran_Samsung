@@ -46,87 +46,109 @@ barplot(y[order(y)],col = c("red","violetred3","antiquewhite2"),main = "Freq of 
 
 # 8
 
+# correct date columns
+install.packages("lubridate")
+library(lubridate)
+problematic_dates <- df[!complete.cases(mdy(df$Receipt_Date)), "Receipt_Date"]
+print(problematic_dates)
+problematic_dates <- df[!complete.cases(mdy(df$Appoint_Date)), "Appoint_Date"]
+print(problematic_dates)
+problematic_dates <- df[!complete.cases(mdy(df$Complete_Date)), "Complete_Date"]
+print(problematic_dates)
+
+df$Receipt_Date <- as.Date(df$Receipt_Date, format = "%m/%d/%Y")
+df$Appoint_Date <- as.Date(df$Appoint_Date, format = "%m/%d/%Y")
+df$Complete_Date <- as.Date(df$Complete_Date, format = "%m/%d/%Y")
+Receipt_start_date <- min(df$Receipt_Date)
+Appoint_start_date <- min(df$Appoint_Date)
+Complete_start_date <- min(df$Complete_Date)
+df$Receipt_Day <- as.numeric(difftime(df$Receipt_Date, Receipt_start_date, units = "days"))
+df$Appoint_Day <- as.numeric(difftime(df$Appoint_Date, Appoint_start_date, units = "days"))
+df$Complete_Day <- as.numeric(difftime(df$Complete_Date, Complete_start_date, units = "days"))
+summary(df)
 
 
-
-
+# Target Encoding
 install.packages("data.table", dependencies = TRUE)
+update.packages(ask = FALSE, dependencies = TRUE)
 library(data.table)
 
 dt <- as.data.table(df)
 summary(dt)
+columns_to_remove <- c('No', 'Serial_No', 'Receipt_Date', 'Appoint_Date', 'Complete_Date')
+dt <- dt[, (columns_to_remove) := NULL]
 categorical_cols <- names(dt)[sapply(dt, function(x) is.factor(x) | is.character(x))]
 categorical_cols
 
-for (col in categorical_cols) {
-  # Calculate mean target encoding
-  encoding_map <- dt[, .(mean_target = mean(dt$Total_Invoice_Amount)), by = col]  # Replace target_column with your actual target column name
-  setkeyv(encoding_map, col)  # Set key for fast join
-  dt[encoding_map, paste0(col, "_encoded") := i.mean_target, on = col]
-}
-summary(dt)
-# Remove the original categorical columns from the encoded dataframe
-dt[, (categorical_cols) := NULL]
 
+install.packages("dataPreparation")
+library(dataPreparation)
 
+target_encoding <- build_target_encoding(dt, cols_to_encode = categorical_cols,
+                                         target_col = "Total_Invoice_Amount", functions = c("mean"))
+dt_encoded <- target_encode(dt, target_encoding = target_encoding, drop = TRUE)
+names(dt_encoded)
+names(dt_encoded)[names(dt_encoded)=="Total_Invoice_Amount_mean_by_Cost_Type"]<-"Cost_Type"
+names(dt_encoded)[names(dt_encoded)=="Total_Invoice_Amount_mean_by_Product_Group"]<-"Product_Group"
+names(dt_encoded)[names(dt_encoded)=="Total_Invoice_Amount_mean_by_City"]<-"City"
+names(dt_encoded)[names(dt_encoded)=="Total_Invoice_Amount_mean_by_Defect_Des"]<-"Defect_Des"
+names(dt_encoded)[names(dt_encoded)=="Total_Invoice_Amount_mean_by_Symptom_Desc"]<-"Symptom_Desc"
+names(dt_encoded)[names(dt_encoded)=="Total_Invoice_Amount_mean_by_Action"]<-"Action"
+names(dt_encoded)[names(dt_encoded)=="Total_Invoice_Amount_mean_by_Labor_Charge_Desc"]<-"Labor_Charge_Desc"
+names(dt_encoded)[names(dt_encoded)=="Total_Invoice_Amount_mean_by_Engineer"]<-"Engineer"
 
-
-
-
-
-
-
-install.packages("categoryEncoders")
-library(categoryEncoders)
-
-# Build a data set
-data_set <- data.frame(student = c("Marie", "Marie", "Pierre", "Louis", "Louis"),
-                       grades = c(1, 1, 2, 3, 4))
-
-# Perform target encoding
-encoder <- TargetEncoder(c("student"), "grades")
-encoded_data <- transform(encoder, data_set)
-
-# View the encoded data set
-print(encoded_data)
-
-
-
-
-
-
-
-data_set <- data.table(student = c("Marie", "Marie", "Pierre", "Louis", "Louis"),
-                       grades = c(1, 1, 2, 3, 4))
-
-target_encoding <- build_target_encoding(data_set, cols_to_encode = "student",
-                                         target_col = "grades", functions = c("mean", "sum"))
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-summary(dt)
-
-
-
-
-
-
-cor_matrix <- cor(df)
-cor_matrix
+# Correlation 
+cor_matrix <- cor(dt_encoded)
+cor_matrix>0.7
 
 heatmap(cor_matrix, 
         col = colorRampPalette(c("blue", "white", "red"))(100), 
         main = "Correlation Heatmap")
+
+
+# VIF Calculation
+install.packages("stringi")
+library("stringi")
+install.packages("car", dependencies = TRUE)
+library(car)
+
+df_new <- as.data.frame(dt_encoded)
+model <- lm(df_new$Total_Invoice_Amount ~ ., data = df_new)
+vif_values <- car::vif(model)
+print(vif_values)
+
+unique(df$Cost_Type)
+unique(df_new$Cost_Type)
+
+
+
+
+
+
+# 9
+summary(model)
+summary(model)$r.squared
+
+# remove columns with p-value > 0.5 or vif > 10
+names(df_new)
+df_scale <- scale(df_new)
+df_scale <- as.data.frame(df_scale)
+summary(df_scale)
+model_final <- lm(df_scale$Total_Invoice_Amount ~ Service_type + TAT01 + TAT02 + Job_Satus + 
+                    Labor_Charge_Amount + Parts_Amount + Discount_Amount + 
+                    Receipt_Day + Appoint_Day + Complete_Day + Cost_Type + Product_Group + City + 
+                    Defect_Des + Symptom_Desc + Action + Labor_Charge_Desc + Engineer, data = df_scale)
+vif_values <- car::vif(model_final)
+print(vif_values)
+
+summary(model_final)
+summary(model_final)$r.squared # r2
+
+
+# 10
+install.packages("arules")
+library("arules")
+
+
+
+
