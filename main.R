@@ -1,6 +1,6 @@
 
 # 1
-x<-read.csv("F:\\Learning\\Data Science (19)\\24 R (3)\\Project\\iran_Samsung\\Samdata.csv",header=T)
+x<-read.csv("E:\\Learning\\Data Science (19)\\27 R (4)\\iran_Samsung\\Samdata.csv",header=T)
 x
 
 # 2
@@ -112,8 +112,8 @@ library("stringi")
 install.packages("car", dependencies = TRUE)
 library(car)
 
-df_new <- as.data.frame(dt_encoded)
-model <- lm(df_new$Total_Invoice_Amount ~ ., data = df_new)
+df_encoded <- as.data.frame(dt_encoded)
+model <- lm(df_encoded$Total_Invoice_Amount ~ ., data = df_encoded)
 vif_values <- car::vif(model)
 print(vif_values)
 
@@ -126,18 +126,20 @@ unique(df_new$Cost_Type)
 
 
 # 9
+# Correlation (Cost_Type, Total_Invoice_Amount) = 0.17775805 
 summary(model)
 summary(model)$r.squared
 
 # remove columns with p-value > 0.5 or vif > 10
-names(df_new)
-df_scale <- scale(df_new)
+names(df_encoded)
+df_encoded$FinalInvoice <- (df_encoded$Total_Invoice_Amount + df_encoded$Discount_Amount)
+df_scale <- scale(df_encoded)
 df_scale <- as.data.frame(df_scale)
 summary(df_scale)
-model_final <- lm(df_scale$Total_Invoice_Amount ~ Service_type + TAT01 + TAT02 + Job_Satus + 
-                    Labor_Charge_Amount + Parts_Amount + Discount_Amount + 
-                    Receipt_Day + Appoint_Day + Complete_Day + Cost_Type + Product_Group + City + 
-                    Defect_Des + Symptom_Desc + Action + Labor_Charge_Desc + Engineer, data = df_scale)
+model_final <- lm(df_scale$FinalInvoice ~ Labor_Charge_Desc:Service_type + TAT01 + TAT02 +
+                    Labor_Charge_Amount + Parts_Amount + 
+                    Cost_Type + Product_Group + Labor_Charge_Desc:City + 
+                    Engineer:Symptom_Desc + Action + Defect_Des + Engineer, data = df_scale)
 vif_values <- car::vif(model_final)
 print(vif_values)
 
@@ -148,45 +150,46 @@ summary(model_final)$r.squared # r2
 # 10
 install.packages("arules", dependencies = TRUE)
 library("arules")
-arules_model <- apriori(df, parameter = list(supp = 0.01, conf = 0.3))
-arules_model
 
 summary(df)
-df_arules <- subset(df, select = -c(No, Serial_No, Receipt_Date , Appoint_Date , Complete_Date , Receipt_Day, Appoint_Day, Complete_Day, day,TAT01, TAT02,
-                                   Parts_Amount , Discount_Amount , Total_Invoice_Amount , Labor_Charge_Amount))
+df_arules <- subset(df, select = -c(No, Serial_No, Receipt_Date , Appoint_Date , Complete_Date , Receipt_Day, Appoint_Day, Complete_Day, TAT01, TAT02,
+                                    Job_Satus, Parts_Amount , Discount_Amount , Total_Invoice_Amount , Labor_Charge_Amount))
 summary(df_arules)
-
-data8 <-  as(data7, "transactions")
-
-inspect(head(data8))
-
-
-
-
 
 df_arules$Cost_Type <- as.factor(df_arules$Cost_Type)
 df_arules$Defect_Des <- as.factor(df_arules$Defect_Des)
 df_arules$Service_type <- as.factor(df_arules$Service_type)
 df_arules$City <- as.factor(df_arules$City)
-df_arules$Job_Satus <- as.factor(df_arules$Job_Satus)
 df_arules$Symptom_Desc <- as.factor(df_arules$Symptom_Desc)
 df_arules$Action <- as.factor(df_arules$Action)
 df_arules$Labor_Charge_Desc <- as.factor(df_arules$Labor_Charge_Desc)
 df_arules$Engineer <- as.factor(df_arules$Engineer)
 df_arules$Product_Group <- as.factor(df_arules$Product_Group)
-arules_model <- apriori(df_arules, parameter = list(supp = 0.1, conf = 0.5))
+df_arules <-  as(df_arules, "transactions")
+
+arules_model <- apriori(df_arules, parameter = list(supp = 0.7, conf = 0.8))
 arules_model
-inspect(arules_model[1:40])
-itemFrequencyPlot(data8, topN = 15,
+inspect(arules_model[1:15])
+itemFrequencyPlot(df_arules, topN = 15,
                   main = "Items Distribution", 
                   type = "absolute", ylab = "Frequency")
 
 install.packages("arulesViz")
 library("arulesViz")
 inspectDT(arules_model)
-inspect(subset(arules_model, lift > 3))
-inspect(subset(arules_model, support > 0.05))
+inspect(subset(arules_model, lift > 1))
+inspect(subset(arules_model, support > 0.8))
 
+# دستگاههاي داراي گارانتي با علت خرابي فرسودگي پذيرش شده اند كه جاي بررسي دارد.
+# در شهر تهران اغلب خدمات در محل مشتري ارائه شده است
+# در شهر تهران اغلب نياز به خدمات پس از فروش به علت فرسودگي بوده است
+# خدمات پس از فروش در شهر تهران كه به علت فرسودگي درخواست شده است اغلب در محل مشتري انجام گرفته است
+
+
+
+
+
+# 10
 
 
 
