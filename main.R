@@ -1,18 +1,35 @@
 
 # 1
-x<-read.csv("E:\\Learning\\Data Science (19)\\27 R (4)\\iran_Samsung\\Samdata.csv",header=T)
+x<-read.csv("F:\\Learning\\Data Science (19)\\24 R (3)\\Project\\iran_Samsung\\Samdata.csv",header=T)
 x
 
+
+
+
+
+# ------------------------------------------------------------------------------
 # 2
 names(x)
 head(x)
 str(x)
 summary(x)
 
+
+
+
+
+# ------------------------------------------------------------------------------
 # 3
 # names(x)[16] = "Action"
 names(x)[names(x)=="Repair_Action_Desc"]<-"Action"
 
+
+
+
+
+
+
+# ------------------------------------------------------------------------------
 # 4
 df <- data.frame(x)
 df[df==""] <- NA
@@ -26,6 +43,12 @@ colMeans(is.na(df))*100   # 76.9 %
 df <- df[, -which(names(df) == "Product_Date")] # Delete Column
 dim(df)
 
+
+
+
+
+
+# ------------------------------------------------------------------------------
 # 5
 duration_time <- df$TAT02 - df$TAT01
 duration_time
@@ -34,16 +57,34 @@ mean_duration <- mean(duration_time)
 mean_start       # 1.3 day
 mean_duration    # 5.4 day
 
+
+
+
+
+# ------------------------------------------------------------------------------
 # 6
 s <- sum(duplicated(df$Serial_No))
 t <- nrow(df)
 return_index <- (s/(t-s))*100
 return_index     # 3.4 %
 
+
+
+
+
+# ------------------------------------------------------------------------------
 # 7
 y<-table(df$Cost_Type)
 barplot(y[order(y)],col = c("red","violetred3","antiquewhite2"),main = "Freq of Cost Type")
 
+
+
+
+
+
+
+
+# ------------------------------------------------------------------------------
 # 8
 
 # correct date columns
@@ -98,7 +139,10 @@ names(dt_encoded)[names(dt_encoded)=="Total_Invoice_Amount_mean_by_Labor_Charge_
 names(dt_encoded)[names(dt_encoded)=="Total_Invoice_Amount_mean_by_Engineer"]<-"Engineer"
 
 # Correlation 
+install.packages('corrplot')
+library(corrplot)
 cor_matrix <- cor(dt_encoded)
+corrplot(cor_matrix, method = 'number')
 cor_matrix>0.7
 
 heatmap(cor_matrix, 
@@ -117,6 +161,7 @@ model <- lm(df_encoded$Total_Invoice_Amount ~ ., data = df_encoded)
 vif_values <- car::vif(model)
 print(vif_values)
 
+# encode check
 unique(df$Cost_Type)
 unique(df_new$Cost_Type)
 
@@ -124,7 +169,7 @@ unique(df_new$Cost_Type)
 
 
 
-
+# ------------------------------------------------------------------------------
 # 9
 # Correlation (Cost_Type, Total_Invoice_Amount) = 0.17775805 
 summary(model)
@@ -147,6 +192,9 @@ summary(model_final)
 summary(model_final)$r.squared # r2
 
 
+
+
+# ------------------------------------------------------------------------------
 # 10
 install.packages("arules", dependencies = TRUE)
 library("arules")
@@ -189,12 +237,57 @@ inspect(subset(arules_model, support > 0.8))
 
 
 
-# 10
+
+# ------------------------------------------------------------------------------
+# 11
+install.packages("factoextra")
+install.packages("fpc")
+library("cluster")
+library("ggplot2")
+library("factoextra")
+library(fpc)
+
+df_seg <- subset(df_encoded, select = -c(No, Serial_No, Receipt_Date , Appoint_Date , Complete_Date , Receipt_Day, 
+                                 Appoint_Day, Complete_Day, TAT01, TAT02))
+df_seg_scale <- as.data.frame(scale(df_seg))
+summary(df_seg_scale)
+str(df_seg_scale)
+
+
+# k values
+set.seed(234)
+silhouette_score <- function(k){
+  km <- kmeans(df_seg_scale, centers = k, nstart=10)
+  ss <- silhouette(km$cluster, dist(df_seg_scale))
+  mean(ss[, 3])
+}
+k <- 2:20
+avg_sil <- sapply(k, silhouette_score)
+optimal_k <- k[which.max(avg_sil)]
+print(paste("Optimal number of clusters (k) =", optimal_k))
+plot(k, type='b', avg_sil, xlab='Number of clusters', ylab='Average Silhouette Scores')
+abline(v = optimal_k, col = "red", lty = 2)
+
+fviz_nbclust(df_seg_scale, kmeans, method='silhouette', k.max = 20)
+
+# Segments
+set.seed(234)
+seg_km <- kmeans(df_seg_scale, centers = optimal_k)
+df_seg_scale$segment <- seg_km$cluster
+seg_km$tot.withinss
+seg_km$withinss
+seg_km$betweenss
+table(seg_km$cluster)
+
+# Visulization
+library(ggplot2)
+plot(df_seg$Symptom_Desc, df_seg$Action, col = seg_km$cluster)
+fviz_cluster(seg_km, geom = "point", data = df_seg_scale) + 
+  ggtitle("Number of Clusters K = 2")
+ggplot(data = df_seg_scale, aes(Symptom_Desc, Cost_Type, color = factor(segment))) +
+  geom_point()
+boxplot(df_seg_scale$Product_Group ~ df_seg_scale$segment, ylab = "Cost_Type", xlab = "Cluster")
 
 
 
-# زمان تعمیر با مهندس
-# تاریخ اتمام با مهندس
-# اقدام صورت گرفته با مهندس
-# مدت زمان تعمیر با نوع خرابی
 
